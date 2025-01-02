@@ -1,17 +1,25 @@
 # This is the file that scrapes the data from the website intro.co
 
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
+from webdriver_manager.chrome import ChromeDriverManager
 import csv
 import time
 
-driver = webdriver.Chrome()
+# change to headless mode, also we use chrome driver to execute
+options = webdriver.ChromeOptions()
+options.add_argument('--headless')
+# options.add_argument("--disable-gpu")
+driver = webdriver.Chrome(options=options)
+
 url = "https://intro.co/marketplace"
 driver.get(url)
-wait = WebDriverWait(driver, 10)
+wait = WebDriverWait(driver, 100)
+#debug
+print(driver.page_source)
 
 buttons = wait.until(
     EC.presence_of_all_elements_located(
