@@ -6,27 +6,25 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
+# from webdriver_manager.chrome import ChromeDriverManager
 import csv
-import time
 
 options = Options()
-# options.add_argument("--headless")
 options.add_argument("--no-sandbox")
-# options.binary_location = "/usr/bin/google-chrome-stable"
+options.add_argument("--headless")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--disable-gpu")
-# options.add_argument(f"crash-dumps-dir={os.path.expanduser('~/tmp/Crashpad')}")
-# options.add_argument("--remote-debugging-port=9222")
+# mimic real windows to bypass anti-crawling
+options.add_argument("--window-size=1920,1080")
+options.add_argument("--disable-blink-features=AutomationControlled")
+options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
 
-# Update the path to ChromeDriver
 service = Service('/usr/bin/chromedriver')
 driver = webdriver.Chrome(options=options, service=service)
 
 url = "https://intro.co/marketplace"
 driver.get(url)
-wait = WebDriverWait(driver, 30)
-print(driver.page_source)
+wait = WebDriverWait(driver, 20)
 
 try:
     wait.until(lambda driver: driver.execute_script("return document.readyState") == "complete")
@@ -41,18 +39,22 @@ try:
     driver.save_screenshot("debug_screenshot2.png")
 
 except Exception as e:
-    print(f"An error occurred: {e}")
+    print(f"Error finding 'See all' buttons: {e}")
     driver.save_screenshot("debug_screenshot1.png")
+    driver.quit()
+    exit()
+    
     
 # create a CSV file to store the data
-with open("profiles.csv", mode="w", newline="") as file:
+with open("profiles.csv", mode="w", newline="", encoding="utf-8") as file:
     writer = csv.writer(file)
     writer.writerow(["Name", "About"])
     for button in buttons:
         try:
             button.click()
-            # make sure the page has been loaded correctly
-            time.sleep(2)
+            wait.until(EC.presence_of_all_elements_located(
+                (By.CSS_SELECTOR, ".expert-card.w-full.cursor-pointer a")
+            ))
             while True:
                 # find all the profiles with link on the current webpage
                 profiles = driver.find_elements(
