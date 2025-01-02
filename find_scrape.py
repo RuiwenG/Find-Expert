@@ -1,6 +1,7 @@
 # This is the file that scrapes the data from the website intro.co
 
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -9,27 +10,40 @@ from webdriver_manager.chrome import ChromeDriverManager
 import csv
 import time
 
-# change to headless mode, also we use chrome driver to execute
-options = webdriver.ChromeOptions()
-options.add_argument('--headless')
-# options.add_argument("--disable-gpu")
-driver = webdriver.Chrome(options=options)
+options = Options()
+# options.add_argument("--headless")
+options.add_argument("--no-sandbox")
+# options.binary_location = "/usr/bin/google-chrome-stable"
+options.add_argument("--disable-dev-shm-usage")
+options.add_argument("--disable-gpu")
+# options.add_argument(f"crash-dumps-dir={os.path.expanduser('~/tmp/Crashpad')}")
+# options.add_argument("--remote-debugging-port=9222")
+
+# Update the path to ChromeDriver
+service = Service('/usr/bin/chromedriver')
+driver = webdriver.Chrome(options=options, service=service)
 
 url = "https://intro.co/marketplace"
 driver.get(url)
-wait = WebDriverWait(driver, 100)
-#debug
+wait = WebDriverWait(driver, 30)
 print(driver.page_source)
 
-buttons = wait.until(
+try:
+    wait.until(lambda driver: driver.execute_script("return document.readyState") == "complete")
+    buttons = wait.until(
     EC.presence_of_all_elements_located(
         # this part was inspected manually
-        (
-            By.XPATH,
+        (    By.XPATH,
             "//button[contains(@class, 'flex w-full h-full items-center justify-center text-base')]//span[.='See all']",
-        )
-    )
-)
+        )))
+    
+    print(f"Found {len(buttons)} buttons.")
+    driver.save_screenshot("debug_screenshot2.png")
+
+except Exception as e:
+    print(f"An error occurred: {e}")
+    driver.save_screenshot("debug_screenshot1.png")
+    
 # create a CSV file to store the data
 with open("profiles.csv", mode="w", newline="") as file:
     writer = csv.writer(file)
