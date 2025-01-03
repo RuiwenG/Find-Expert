@@ -26,20 +26,25 @@ url = "https://intro.co/marketplace"
 driver.get(url)
 wait = WebDriverWait(driver, 30)
 
-wait.until(lambda driver: driver.execute_script("return document.readyState") == "complete")
-# updates the button
-buttons = wait.until(EC.presence_of_all_elements_located(
-    (By.CSS_SELECTOR, ".flex.w-full.h-full.items-center.justify-center.text-base")
-))
+button_selector = ".flex.w-full.h-full.items-center.justify-center.text-base"
+initial_buttons = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, button_selector)))
 
 # create a set to contains scraped urls
 scraped_profiles = set()
-# assign different names to different profile category
-i = 0
+
 # Create CSV file
-for button in buttons:
+for i in range(len(initial_buttons)):
+    
+    # Re-fetch buttons to avoid stale element references after navigation
+    wait.until(lambda d: d.execute_script("return document.readyState") == "complete") 
+    buttons = driver.find_elements(By.CSS_SELECTOR, button_selector)
+    
+    button = buttons[i]
+    # debug
+    print(f"{i}, button found")
+
     filename = f"profiles_{i}.csv"
-    i = i+1
+    
     with open(filename, mode="w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
         writer.writerow(["Name", "About"])
@@ -48,8 +53,8 @@ for button in buttons:
             wait.until(EC.presence_of_all_elements_located(
                 (By.CSS_SELECTOR, ".expert-card.w-full.cursor-pointer a")
             ))
-
-            while True:
+            has_next_page = True
+            while has_next_page:
                 profiles = driver.find_elements(By.CSS_SELECTOR, ".expert-card.w-full.cursor-pointer a")
                 for profile in profiles:
                     try:
@@ -61,7 +66,7 @@ for button in buttons:
                         # Open the profile in a new tab
                         driver.execute_script(f"window.open('{profile_link}', '_blank');")
                         driver.switch_to.window(driver.window_handles[-1])  # Switch to the new tab
-                        # DD
+                        # debug
                         print(profile_link)
                         # Wait for the page to load
                         wait.until(
@@ -73,16 +78,16 @@ for button in buttons:
                         name = driver.find_element(
                             By.CSS_SELECTOR, ".font-sofia.text-\\[26px\\].leading-\\[30px\\]"
                         ).text
+                        # debug
                         print(f"Scraped: {name}")
-                        # ACTION
-                        # need to wait, some content are dynamically loaded.
                         about_element = wait.until(
                             EC.visibility_of_element_located(
                                 (By.CSS_SELECTOR, 
                                 '[class^="font-sofia text-\\[17px\\]"]')
                             )
                         )
-                        print(2)
+                        # debug
+                        print(i)
                         # Write to CSV
                         writer.writerow([name, about_element.text])
                         # Close the current tab and switch back to the main tab
@@ -95,7 +100,6 @@ for button in buttons:
                         if len(driver.window_handles) > 1:
                             driver.close()
                             driver.switch_to.window(driver.window_handles[0])
-                            print(driver.title)
 
                 # Handle pagination
                 try:
@@ -108,8 +112,10 @@ for button in buttons:
                     ))
                 except Exception:
                     print("No more pages to load.")
-                    break
+                    has_next_page = False
+            #not sure 
+            driver.back()
         except Exception as e:
-            print(f"Error clicking button: {e}")
+            print(f"Error clicking button at index {i}: {e}")
   
 driver.quit()
