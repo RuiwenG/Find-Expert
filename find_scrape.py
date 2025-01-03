@@ -18,7 +18,6 @@ options.add_argument("--window-size=1920,1080")
 options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
 
-
 # Update the path to ChromeDriver
 service = Service('/usr/bin/chromedriver')
 driver = webdriver.Chrome(options=options, service=service)
@@ -27,30 +26,23 @@ url = "https://intro.co/marketplace"
 driver.get(url)
 wait = WebDriverWait(driver, 30)
 
-print(driver.title)
-
-# Open the "See all" section
-try:
-    wait.until(lambda driver: driver.execute_script("return document.readyState") == "complete")
-    # updates the button
-    buttons = wait.until(EC.presence_of_all_elements_located(
-        (By.CSS_SELECTOR, ".flex.w-full.h-full.items-center.justify-center.text-base")
-    ))
-    print(f"Found {len(buttons)} buttons.")
-except Exception as e:
-    print(f"Error finding 'See all' buttons: {e}")
-    driver.quit()
-    exit()
+wait.until(lambda driver: driver.execute_script("return document.readyState") == "complete")
+# updates the button
+buttons = wait.until(EC.presence_of_all_elements_located(
+    (By.CSS_SELECTOR, ".flex.w-full.h-full.items-center.justify-center.text-base")
+))
 
 # create a set to contains scraped urls
 scraped_profiles = set()
-
+# assign different names to different profile category
+i = 0
 # Create CSV file
-with open("profiles.csv", mode="w", newline="", encoding="utf-8") as file:
-    writer = csv.writer(file)
-    writer.writerow(["Name", "About"])
-
-    for button in buttons:
+for button in buttons:
+    filename = f"profiles_{i}.csv"
+    i = i+1
+    with open(filename, mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Name", "About"])
         try:
             button.click()
             wait.until(EC.presence_of_all_elements_located(
@@ -90,11 +82,7 @@ with open("profiles.csv", mode="w", newline="", encoding="utf-8") as file:
                                 '[class^="font-sofia text-\\[17px\\]"]')
                             )
                         )
-                        about_bol = wait.until(lambda d: about_element.text.strip() != "")
-                        if not about_bol:
-                            print("oh no!")
-                        else:
-                            print(2)
+                        print(2)
                         # Write to CSV
                         writer.writerow([name, about_element.text])
                         # Close the current tab and switch back to the main tab
@@ -123,5 +111,5 @@ with open("profiles.csv", mode="w", newline="", encoding="utf-8") as file:
                     break
         except Exception as e:
             print(f"Error clicking button: {e}")
-
+  
 driver.quit()
