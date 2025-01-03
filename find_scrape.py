@@ -1,4 +1,11 @@
-# This is the file that scrapes the data from the website intro.co
+"""
+This script uses Selenium to scrape data from the website intro.co. 
+It finds all profiles in different sections through navigating "show all"
+buttons, and then collects Name and About information for each of the 
+profiles, then it stores data in different CSV files that based on the 
+section where the data came from.
+
+"""
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -13,7 +20,7 @@ options.add_argument("--no-sandbox")
 options.add_argument("--headless")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--disable-gpu")
-
+# Mimic windows to satisfy webpage (anti-scraping)
 options.add_argument("--window-size=1920,1080")
 options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
@@ -31,20 +38,17 @@ wait = WebDriverWait(driver, 30)
 button_selector = ".flex.w-full.h-full.items-center.justify-center.text-base"
 initial_buttons = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, button_selector)))
 
-# create a set to contains scraped urls
+# Create a set to contains scraped urls
 scraped_profiles = set()
 
-# Create CSV file
+# Create CSV files
 for i in range(len(initial_buttons)):
-    
     # Re-fetch buttons to avoid stale element references after navigation
     wait.until(lambda d: d.execute_script("return document.readyState") == "complete") 
     buttons = driver.find_elements(By.CSS_SELECTOR, button_selector)
-    
     button = buttons[i]
-    # debug
-    print(f"{i}, button found")
-
+    
+    # Create different CSV files based on different categories
     filename = f"profiles_{i}.csv"
     
     with open(filename, mode="w", newline="", encoding="utf-8") as file:
@@ -57,7 +61,8 @@ for i in range(len(initial_buttons)):
             ))
             has_next_page = True
             while has_next_page:
-                profiles = driver.find_elements(By.CSS_SELECTOR, ".expert-card.w-full.cursor-pointer a")
+                # wait till fully loaded
+                profiles = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".expert-card.w-full.cursor-pointer a")))
                 for profile in profiles:
                     try:
                         profile_link = profile.get_attribute("href")
@@ -68,9 +73,8 @@ for i in range(len(initial_buttons)):
                         # Open the profile in a new tab
                         driver.execute_script(f"window.open('{profile_link}', '_blank');")
                         driver.switch_to.window(driver.window_handles[-1])  # Switch to the new tab
-                        # debug
-                        print(profile_link)
-                        # Wait for the page to load
+                        # Wait for the page to load. Might be duplicate, but for robust reason keep both
+                        wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
                         wait.until(
                             EC.presence_of_element_located(
                                 (By.CSS_SELECTOR, ".md\\:max-w-\\[360px\\].lg\\:ml-20.md\\:ml-10")
@@ -80,16 +84,12 @@ for i in range(len(initial_buttons)):
                         name = driver.find_element(
                             By.CSS_SELECTOR, ".font-sofia.text-\\[26px\\].leading-\\[30px\\]"
                         ).text
-                        # debug
-                        print(f"Scraped: {name}")
                         about_element = wait.until(
                             EC.visibility_of_element_located(
                                 (By.CSS_SELECTOR, 
                                 '[class^="font-sofia text-\\[17px\\]"]')
                             )
                         )
-                        # debug
-                        print(i)
                         # Write to CSV
                         writer.writerow([name, about_element.text])
                         # Close the current tab and switch back to the main tab
@@ -115,7 +115,6 @@ for i in range(len(initial_buttons)):
                 except Exception:
                     print("No more pages to load.")
                     has_next_page = False
-            #not sure 
             driver.back()
         except Exception as e:
             print(f"Error clicking button at index {i}: {e}")
