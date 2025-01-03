@@ -21,6 +21,8 @@ options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) App
 # Update the path to ChromeDriver
 service = Service('/usr/bin/chromedriver')
 driver = webdriver.Chrome(options=options, service=service)
+# Explicitly set timeout time to be 300
+driver.set_page_load_timeout(300) 
 
 url = "https://intro.co/marketplace"
 driver.get(url)
